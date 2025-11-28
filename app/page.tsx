@@ -164,7 +164,7 @@ export default function Home() {
 
           // Send to webhook
           const webhookResponse = await fetch(
-            'https://rafay22.app.n8n.cloud/webhook-test/sap-mapping',
+            'https://rafay23.app.n8n.cloud/webhook-test/sap-mapping',
             {
               method: 'POST',
               headers: {
