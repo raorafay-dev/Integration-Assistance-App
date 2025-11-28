@@ -1,0 +1,352 @@
+{
+  "name": "Integration Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/sap-mapping",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -416,
+        -64
+      ],
+      "id": "0a7edc13-d7b9-439e-be85-6fc6d59ee7f1",
+      "name": "Webhook",
+      "webhookId": "884c517b-4c64-4851-b871-1d1c07637a3e",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "468ccecf-e010-4691-8fa8-1a14eaefb88b",
+      "name": "Respond to Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1424,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Node: Extract and Process File (UPDATED with Integration Direction)\nconst items = $input.all();\n\n// Extract webhook payload\nconst payload = items[0].json.body || {};\nconst file = payload.file || {};\nconst config = payload.configuration || {};\n\n// Decode base64 file content if present\nlet binaryData = {};\nif (file.content) {\n  // Remove the data URI prefix if it exists\n  let base64Data = file.content;\n  \n  if (base64Data.includes(',')) {\n    base64Data = base64Data.split(',')[1];\n  }\n  \n  const buffer = Buffer.from(base64Data, 'base64');\n  \n  binaryData = {\n    data: {\n      data: buffer,\n      mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',\n      fileName: file.name || 'upload.xlsx',\n      fileExtension: 'xlsx'\n    }\n  };\n}\n\nreturn [{\n  json: {\n    sapSystem: config.sapSystem || '',\n    integrationDirection: config.integrationDirection || 'Inbound', // NEW: Add this\n    module: config.module || '',\n    objectType: config.objectType || '',\n    externalSystem: config.externalSystem || '',\n    additionalNotes: config.additionalNotes || '',\n    fileName: file.name || '',\n    fileSize: file.size || 0,\n    fileType: file.type || ''\n  },\n  binary: binaryData\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        -64
+      ],
+      "id": "239fe8f1-61db-400e-b53f-4dc4899d07ca",
+      "name": "Extract & Process File",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "id": "37748d70-448d-44a4-80f0-0b6205897d97",
+      "name": "Read Excel Data",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e92ef9ab-5bbe-4771-9213-4122b06261ad",
+              "name": "sapSystem",
+              "value": "={{ $json.sapSystem }}",
+              "type": "string"
+            },
+            {
+              "id": "5ba158ae-f377-4c81-8207-8d65a6ccdd41",
+              "name": "integrationDirection",
+              "value": "={{ $json.integrationDirection }}",
+              "type": "string"
+            },
+            {
+              "id": "f1bf4273-345c-48d0-86fe-05004a454503",
+              "name": "module",
+              "value": "={{ $json.module }}",
+              "type": "string"
+            },
+            {
+              "id": "9107dc54-1a82-4413-add9-40cbdc262c4d",
+              "name": "objectType",
+              "value": "={{ $json.objectType }}",
+              "type": "string"
+            },
+            {
+              "id": "553d1e1e-1220-4dc0-8138-389dab54dc67",
+              "name": "externalSystem",
+              "value": "={{ $json.externalSystem }}",
+              "type": "string"
+            },
+            {
+              "id": "1485b902-eb5d-4f8e-b0a3-897f4f2252a2",
+              "name": "additionalNotes",
+              "value": "={{ $json.additionalNotes }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        80,
+        96
+      ],
+      "id": "52ac6d53-127f-4222-93dd-c69fc89a4ac0",
+      "name": "Keep Configuration"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        352,
+        -64
+      ],
+      "id": "bbfe5978-edbe-43fa-b74c-7359ed260e82",
+      "name": "Merge Config with Excel Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Node: Prepare Data for AI - ALL-IN-ONE VERSION\n// This creates ONE comprehensive prompt that handles:\n// 1. Predicting module/objectType if missing\n// 2. Field mappings\n// 3. API/BAPI recommendations\n// 4. Implementation guidance\n\nconst items = $input.all();\n\n// Get configuration from \"Extract & Process File\" node\nconst prevNodeName = 'Extract & Process File';\nconst prevNode = $(prevNodeName).first().json;\n\nconst config = {\n  sapSystem: prevNode.sapSystem || '',\n  integrationDirection: prevNode.integrationDirection || 'Inbound',\n  module: prevNode.module || '',\n  objectType: prevNode.objectType || '',\n  externalSystem: prevNode.externalSystem || '',\n  additionalNotes: prevNode.additionalNotes || ''\n};\n\n// Get Excel data from current items\nconst excelData = items.map(item => item.json);\n\n// Identify Excel columns\nconst configKeys = ['sapSystem', 'integrationDirection', 'module', 'objectType', 'externalSystem', \n                    'additionalNotes', 'fileName', 'fileSize', 'fileType', 'configData'];\n\nconst allKeys = Object.keys(excelData[0] || {});\nconst excelColumns = allKeys.filter(key => !configKeys.includes(key));\n\n// Filter rows to only include Excel data columns\nconst excelRows = excelData.map(row => {\n  const cleanRow = {};\n  excelColumns.forEach(col => {\n    cleanRow[col] = row[col];\n  });\n  return cleanRow;\n}).filter(row => Object.keys(row).length > 0);\n\n// Detect field name column\nconst fieldNameColumns = ['Field Name', 'FieldName', 'field_name', 'Name', 'Field', \n                          'Column Name', 'ColumnName', 'column_name', 'Field_Name',\n                          'fieldName', 'field', 'name', 'Id', 'ID', 'Identifier'];\n\nlet fieldNameColumn = excelColumns.find(col => \n  fieldNameColumns.some(fn => col.toLowerCase() === fn.toLowerCase())\n) || excelColumns[0];\n\n// Detect optional columns\nconst descriptionColumns = ['Description', 'description', 'Field Description', \n                            'FieldDescription', 'field_description', 'Desc', 'desc'];\nconst mandatoryColumns = ['Mandatory', 'mandatory', 'Required', 'required', \n                          'Is Required', 'IsRequired', 'is_required'];\nconst dataTypeColumns = ['Data Type', 'DataType', 'data_type', 'Type', 'type', \n                         'Field Type', 'FieldType'];\n\nconst descColumn = excelColumns.find(col => \n  descriptionColumns.some(dc => col.toLowerCase() === dc.toLowerCase())\n);\nconst mandColumn = excelColumns.find(col => \n  mandatoryColumns.some(mc => col.toLowerCase() === mc.toLowerCase())\n);\nconst typeColumn = excelColumns.find(col => \n  dataTypeColumns.some(tc => col.toLowerCase() === tc.toLowerCase())\n);\n\n// Format data for AI\nlet formattedData = '';\nlet tableStructure = '';\n\nif (excelRows.length > 0) {\n  tableStructure = `DETECTED EXCEL STRUCTURE:\n- Total Columns: ${excelColumns.length}\n- Column Names: ${excelColumns.join(', ')}\n- Field Name Column: \"${fieldNameColumn}\"`;\n  \n  if (descColumn) tableStructure += `\\n- Description Column: \"${descColumn}\"`;\n  if (mandColumn) tableStructure += `\\n- Mandatory Column: \"${mandColumn}\"`;\n  if (typeColumn) tableStructure += `\\n- Data Type Column: \"${typeColumn}\"`;\n  \n  tableStructure += `\\n- Total Fields to Map: ${excelRows.length}\\n`;\n  \n  formattedData = excelRows.map((row, index) => {\n    let rowInfo = `Field ${index + 1}:`;\n    rowInfo += `\\n  Field Name: ${row[fieldNameColumn] || 'N/A'}`;\n    \n    if (descColumn && row[descColumn]) {\n      rowInfo += `\\n  Description: ${row[descColumn]}`;\n    }\n    if (mandColumn && row[mandColumn]) {\n      rowInfo += `\\n  Mandatory (from source): ${row[mandColumn]}`;\n    }\n    if (typeColumn && row[typeColumn]) {\n      rowInfo += `\\n  Data Type (from source): ${row[typeColumn]}`;\n    }\n    \n    const otherColumns = excelColumns.filter(col => \n      col !== fieldNameColumn && col !== descColumn && \n      col !== mandColumn && col !== typeColumn\n    );\n    otherColumns.forEach(col => {\n      if (row[col]) {\n        rowInfo += `\\n  ${col}: ${row[col]}`;\n      }\n    });\n    \n    return rowInfo;\n  }).join('\\n\\n');\n} else {\n  formattedData = 'ERROR: No data rows found in Excel file';\n  tableStructure = 'ERROR: Could not detect Excel structure';\n}\n\n// Build context information\nconst moduleNames = {\n  'SD': 'Sales & Distribution',\n  'MM': 'Materials Management',\n  'FI': 'Financial Accounting',\n  'CO': 'Controlling',\n  'PP': 'Production Planning',\n  'WM': 'Warehouse Management',\n  'HR': 'Human Capital Management',\n  'QM': 'Quality Management',\n  'PM': 'Plant Maintenance'\n};\n\nlet contextInfo = `USER-PROVIDED CONTEXT:\n- SAP System: ${config.sapSystem || 'Not specified'} ${config.sapSystem ? `(${config.sapSystem === 'ECC' ? 'SAP ECC 6.0' : 'SAP S/4HANA'})` : ''}\n- Integration Direction: ${config.integrationDirection}`;\n\nif (config.module) {\n  contextInfo += `\\n- SAP Module: ${config.module}${moduleNames[config.module] ? ` (${moduleNames[config.module]})` : ''}`;\n} else {\n  contextInfo += `\\n- SAP Module: NOT PROVIDED - You must predict this`;\n}\n\nif (config.objectType) {\n  contextInfo += `\\n- Object Type: ${config.objectType}`;\n} else {\n  contextInfo += `\\n- Object Type: NOT PROVIDED - You must predict this`;\n}\n\nif (config.externalSystem) {\n  contextInfo += `\\n- External System: ${config.externalSystem}`;\n}\nif (config.additionalNotes) {\n  contextInfo += `\\n- Additional Context: ${config.additionalNotes}`;\n}\n\n// Determine what needs prediction\nconst needsModulePrediction = !config.module || config.module.trim() === '';\nconst needsObjectTypePrediction = !config.objectType || config.objectType.trim() === '';\n\n// Create comprehensive AI prompt\nconst prompt = `You are an expert SAP ABAP integration consultant with 15+ years of experience in field mapping, table structures, data type conversions, and API selection across SAP ECC and S/4HANA systems.\n\n═══════════════════════════════════════════════════════════════\nINTEGRATION CONTEXT\n═══════════════════════════════════════════════════════════════\n${contextInfo}\n\n═══════════════════════════════════════════════════════════════\nSOURCE FILE STRUCTURE\n═══════════════════════════════════════════════════════════════\n${tableStructure}\n\n═══════════════════════════════════════════════════════════════\nSOURCE FIELDS TO MAP\n═══════════════════════════════════════════════════════════════\n${formattedData}\n\n═══════════════════════════════════════════════════════════════\nYOUR COMPREHENSIVE TASK\n═══════════════════════════════════════════════════════════════\n\nYou will provide THREE things in ONE response:\n\n**PART 1: CONTEXT PREDICTION (if needed)**\n${needsModulePrediction || needsObjectTypePrediction ? `\nSome context is missing. Based on the field names above, predict:\n${needsModulePrediction ? `\n- SAP Module: Analyze field patterns to determine most likely module (SD, MM, FI, CO, PP, WM, HR, QM, PM)\n  Look for: Standard SAP field indicators (VBELN→SD, MATNR→MM, BUKRS→FI, etc.)\n` : ''}\n${needsObjectTypePrediction ? `\n- Object Type: Identify the specific business object (e.g., Material Master, Sales Order, Customer Master, Purchase Order)\n  Consider: Master data vs transactional data, header vs item patterns\n` : ''}\n\nProvide your predictions with confidence level (0-100%) and brief reasoning.\n` : `\nAll context provided by user - no prediction needed. Use the provided module and object type.\n`}\n\n**PART 2: FIELD MAPPINGS**\n\nCreate accurate SAP technical field mappings for ALL ${excelRows.length} source fields.\n\nMAPPING GUIDELINES:\n\n1. SAP TECHNICAL FIELD NAME\n   • Use standard SAP field naming (UPPERCASE)\n   • Examples: KUNNR, VBELN, MATNR, BUKRS, WERKS, LGORT\n   • Consider predicted/provided module and object type\n\n2. SAP TABLE NAME\n   • Primary table where field exists\n   • Examples: KNA1, VBAK, MARA, LFA1, EKKO\n   • Master Data (MA*, KN*, LF*) vs Transaction (VB*, EK*, MK*)\n\n3. ABAP DATA TYPE with LENGTH\n   • Format: TYPE(LENGTH) - e.g., CHAR(10), NUMC(18)\n   • Types: CHAR(n), NUMC(n), DATS, TIMS, CURR(n), QUAN(n), CUKY(5), UNIT(3)\n\n4. MANDATORY INDICATOR\n   • Y = Key field OR required for transactions\n   • N = Optional field\n\n5. CONFIDENCE LEVEL\n   • High: Standard SAP field, clear match\n   • Medium: Likely correct, may vary by implementation\n   • Low: Ambiguous, custom field likely needed\n\n6. TECHNICAL NOTES\n   • Key field status, check tables, conversion rules\n   • Relationships, version differences, special handling\n\n**PART 3: API/BAPI RECOMMENDATION**\n\nBased on:\n- Integration Direction: ${config.integrationDirection}\n- Predicted/Provided Module & Object Type\n- Mapped fields and tables\n\nRecommend:\n1. **Primary Method**: Best API/BAPI/IDoc for this scenario\n   - For Inbound: Focus on CREATE/UPDATE methods\n   - For Outbound: Focus on READ/DISPLAY/EXTRACT methods\n   \n2. **Why This Method**: Brief reasoning (1-2 sentences)\n\n3. **Implementation Steps**: 3-5 practical steps to implement\n\n4. **Testing Approach**: Which transaction code to test with\n\n5. **Alternative Method**: One backup option with brief note on when to use it\n\n═══════════════════════════════════════════════════════════════\nCRITICAL OUTPUT REQUIREMENTS\n═══════════════════════════════════════════════════════════════\n\nReturn ONLY valid JSON - no markdown, no code blocks, no preamble:\n\n{\n  \"contextPrediction\": {\n    \"modulePredicted\": ${needsModulePrediction},\n    \"module\": \"${config.module || 'predicted_module'}\",\n    \"moduleConfidence\": ${needsModulePrediction ? 'predicted_confidence' : 100},\n    \"moduleReasoning\": \"${needsModulePrediction ? 'why you predicted this' : 'provided by user'}\",\n    \"objectTypePredicted\": ${needsObjectTypePrediction},\n    \"objectType\": \"${config.objectType || 'predicted_object_type'}\",\n    \"objectTypeConfidence\": ${needsObjectTypePrediction ? 'predicted_confidence' : 100},\n    \"objectTypeReasoning\": \"${needsObjectTypePrediction ? 'why you predicted this' : 'provided by user'}\"\n  },\n  \"fieldMappings\": [\n    {\n      \"sourceField\": \"exact field name from source\",\n      \"sourceDescription\": \"description if provided, else empty string\",\n      \"sapField\": \"SAP_FIELD_NAME\",\n      \"sapTable\": \"SAP_TABLE_NAME\",\n      \"dataType\": \"TYPE(LENGTH)\",\n      \"mandatory\": \"Y or N\",\n      \"confidence\": \"High or Medium or Low\",\n      \"notes\": \"Detailed technical notes\"\n    }\n  ],\n  \"recommendation\": {\n    \"primaryMethod\": {\n      \"type\": \"BAPI\",\n      \"name\": \"BAPI_SPECIFIC_NAME\",\n      \"confidence\": 90,\n      \"reasoning\": \"Why this is best for ${config.integrationDirection} integration\",\n      \"implementationSteps\": [\n        \"Step 1: ...\",\n        \"Step 2: ...\",\n        \"Step 3: ...\"\n      ],\n      \"testTransaction\": \"SE37\",\n      \"keyFields\": [\"Field1\", \"Field2\", \"Field3\"]\n    },\n    \"alternativeMethod\": {\n      \"type\": \"IDoc or OData or RFC\",\n      \"name\": \"ALTERNATIVE_NAME\",\n      \"when\": \"When to use this instead\"\n    }\n  }\n}\n\nIMPORTANT:\n✓ Map ALL ${excelRows.length} fields in fieldMappings array\n✓ Confidence: exactly \"High\", \"Medium\", or \"Low\"\n✓ Use empty string \"\" for missing info, never null\n✓ If module/objectType was provided, confidence = 100, reasoning = \"provided by user\"\n✓ Consider Integration Direction (${config.integrationDirection}) when recommending API\n\nBEGIN YOUR COMPREHENSIVE ANALYSIS:`;\n\n// Return prompt and metadata\nreturn [{\n  json: {\n    prompt: prompt,\n    metadata: {\n      sapSystem: config.sapSystem,\n      integrationDirection: config.integrationDirection,\n      module: config.module,\n      objectType: config.objectType,\n      externalSystem: config.externalSystem,\n      additionalNotes: config.additionalNotes,\n      totalFields: excelRows.length,\n      needsModulePrediction: needsModulePrediction,\n      needsObjectTypePrediction: needsObjectTypePrediction,\n      excelStructure: {\n        totalColumns: excelColumns.length,\n        columnNames: excelColumns,\n        fieldNameColumn: fieldNameColumn,\n        hasDescription: !!descColumn,\n        hasMandatory: !!mandColumn,\n        hasDataType: !!typeColumn\n      }\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -64
+      ],
+      "id": "f58d5531-ea45-470e-b10a-5514e81a5ea8",
+      "name": "Prepare Data for AI"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        800,
+        -64
+      ],
+      "id": "f3e3086e-400e-429d-8ad6-4f8cb7aa33f3",
+      "name": "AI Agent",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v3.1:671b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        720,
+        160
+      ],
+      "id": "9e94fa67-bc5f-42c9-b351-94e9d569394c",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5T893XfjSx6c500B",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Node: Parse AI Response - ALL-IN-ONE\n// This parses the comprehensive AI response and formats it nicely\n\nconst items = $input.all();\n\n// Get AI response - handle different response formats\nlet aiResponse = items[0].json;\n\n// Check if response is wrapped in array with 'output' property\nif (Array.isArray(aiResponse) && aiResponse[0]?.output) {\n  aiResponse = aiResponse[0].output;\n} else if (aiResponse?.output) {\n  aiResponse = aiResponse.output;\n}\n\n// Get metadata\nconst prepareNode = $('Prepare Data for AI').first().json;\nconst metadata = prepareNode.metadata;\n\n// Parse AI response safely\nfunction safeParse(data) {\n  if (!data) return null;\n  if (typeof data === 'object' && !Array.isArray(data)) return data;\n  try {\n    let cleaned = data.toString().trim()\n      .replace(/```json\\n?/g, '')\n      .replace(/```\\n?/g, '')\n      .replace(/^\\[|\\]$/g, ''); // Remove outer array brackets if present\n    return JSON.parse(cleaned);\n  } catch (e) {\n    console.error('Parse error:', e.message);\n    console.error('Raw data:', data);\n    return null;\n  }\n}\n\nconst parsed = safeParse(aiResponse);\n\nif (!parsed) {\n  return [{\n    json: {\n      status: 'error',\n      message: 'Failed to parse AI response',\n      rawResponse: aiResponse\n    }\n  }];\n}\n\n// Build clean response\nconst response = {\n  status: 'success',\n  timestamp: new Date().toISOString(),\n  \n  // Context (with prediction info if applicable)\n  context: {\n    sapSystem: metadata.sapSystem,\n    integrationDirection: metadata.integrationDirection,\n    module: {\n      value: parsed.contextPrediction?.module || metadata.module,\n      predicted: parsed.contextPrediction?.modulePredicted || false,\n      confidence: parsed.contextPrediction?.moduleConfidence || 100,\n      reasoning: parsed.contextPrediction?.moduleReasoning || ''\n    },\n    objectType: {\n      value: parsed.contextPrediction?.objectType || metadata.objectType,\n      predicted: parsed.contextPrediction?.objectTypePredicted || false,\n      confidence: parsed.contextPrediction?.objectTypeConfidence || 100,\n      reasoning: parsed.contextPrediction?.objectTypeReasoning || ''\n    },\n    externalSystem: metadata.externalSystem || null,\n    additionalNotes: metadata.additionalNotes || null\n  },\n  \n  // Field Mappings\n  fieldMappings: {\n    total: parsed.fieldMappings?.length || 0,\n    summary: {\n      highConfidence: parsed.fieldMappings?.filter(m => m.confidence === 'High').length || 0,\n      mediumConfidence: parsed.fieldMappings?.filter(m => m.confidence === 'Medium').length || 0,\n      lowConfidence: parsed.fieldMappings?.filter(m => m.confidence === 'Low').length || 0,\n      mandatory: parsed.fieldMappings?.filter(m => m.mandatory === 'Y').length || 0,\n      optional: parsed.fieldMappings?.filter(m => m.mandatory === 'N').length || 0\n    },\n    tablesInvolved: [...new Set(parsed.fieldMappings?.map(m => m.sapTable) || [])],\n    fields: parsed.fieldMappings || []\n  },\n  \n  // API/BAPI Recommendation\n  recommendation: {\n    primary: {\n      method: parsed.recommendation?.primaryMethod?.type || '',\n      api: parsed.recommendation?.primaryMethod?.name || '',\n      confidence: parsed.recommendation?.primaryMethod?.confidence || 0,\n      reasoning: parsed.recommendation?.primaryMethod?.reasoning || '',\n      implementationSteps: parsed.recommendation?.primaryMethod?.implementationSteps || [],\n      testTransaction: parsed.recommendation?.primaryMethod?.testTransaction || '',\n      keyFields: parsed.recommendation?.primaryMethod?.keyFields || []\n    },\n    alternative: {\n      method: parsed.recommendation?.alternativeMethod?.type || '',\n      api: parsed.recommendation?.alternativeMethod?.name || '',\n      when: parsed.recommendation?.alternativeMethod?.when || ''\n    }\n  },\n  \n  // Quick Summary for Developers\n  developerSummary: {\n    module: parsed.contextPrediction?.module || metadata.module,\n    objectType: parsed.contextPrediction?.objectType || metadata.objectType,\n    direction: metadata.integrationDirection,\n    recommendedAPI: parsed.recommendation?.primaryMethod?.name || 'Not determined',\n    totalFieldsMapped: parsed.fieldMappings?.length || 0,\n    highConfidenceMappings: parsed.fieldMappings?.filter(m => m.confidence === 'High').length || 0,\n    warnings: []\n  }\n};\n\n// Add warnings if predictions have low confidence\nif (parsed.contextPrediction?.modulePredicted && parsed.contextPrediction?.moduleConfidence < 70) {\n  response.developerSummary.warnings.push({\n    type: 'warning',\n    message: `Module was AI-predicted with ${parsed.contextPrediction.moduleConfidence}% confidence. Please verify before implementation.`\n  });\n}\n\nif (parsed.contextPrediction?.objectTypePredicted && parsed.contextPrediction?.objectTypeConfidence < 70) {\n  response.developerSummary.warnings.push({\n    type: 'warning',\n    message: `Object Type was AI-predicted with ${parsed.contextPrediction.objectTypeConfidence}% confidence. Please verify before implementation.`\n  });\n}\n\nif (response.fieldMappings.summary.lowConfidence > response.fieldMappings.total * 0.3) {\n  response.developerSummary.warnings.push({\n    type: 'caution',\n    message: `Over 30% of mappings have low confidence. Consider providing more context (module, object type, field descriptions).`\n  });\n}\n\nreturn [{ json: response }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        -64
+      ],
+      "id": "720c0d8e-f6d2-4b67-943d-aa34c4a5b7c2",
+      "name": "Parse AI response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract & Process File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook1": {
+      "main": [
+        []
+      ]
+    },
+    "Extract & Process File": {
+      "main": [
+        [
+          {
+            "node": "Read Excel Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Keep Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Excel Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Config with Excel Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Configuration": {
+      "main": [
+        [
+          {
+            "node": "Merge Config with Excel Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Config with Excel Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data for AI": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse AI response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "91326484-1385-4dd4-ba6f-b8525d2dfed4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "029bb0f8208ac9b538da48b66cbf2f993131d8f38e522bd401506bc92e2d1ce7"
+  },
+  "id": "Ece0IVeXeVgNPwJh",
+  "tags": []
+}
